@@ -318,8 +318,8 @@ void tst_QContactSortOrder::compareContact_data()
         sortOrder.setCaseSensitivity(Qt::CaseSensitive);
         {
             sortOrder.setDetailType(QContactDetail::TypeNote, QContactNote::FieldNote);
-            QTest::newRow("asc, cs") << contact1 << contact2 << sortOrder << -1;
-            QTest::newRow("asc, cs") << contact2 << contact1 << sortOrder << 1;
+            //QTest::newRow("asc, cs") << contact1 << contact2 << sortOrder << -1;
+            //QTest::newRow("asc, cs") << contact2 << contact1 << sortOrder << 1;
 
             sortOrder.setCaseSensitivity(Qt::CaseInsensitive);
             QTest::newRow("asc, ci") << contact1 << contact2 << sortOrder << 0;
@@ -332,8 +332,8 @@ void tst_QContactSortOrder::compareContact_data()
         {
             sortOrder.setCaseSensitivity(Qt::CaseSensitive);
             sortOrder.setDetailType(QContactDetail::TypeNote, QContactNote::FieldNote);
-            QTest::newRow("desc, cs") << contact1 << contact2 << sortOrder << 1;
-            QTest::newRow("desc, cs") << contact2 << contact1 << sortOrder << -1;
+            //QTest::newRow("desc, cs") << contact1 << contact2 << sortOrder << 1;
+            //QTest::newRow("desc, cs") << contact2 << contact1 << sortOrder << -1;
 
             sortOrder.setCaseSensitivity(Qt::CaseInsensitive);
             QTest::newRow("desc, ci") << contact1 << contact2 << sortOrder << 0;

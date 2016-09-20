@@ -364,6 +364,7 @@ void QOrganizerItemGuid::setGuid(const QString &guid)
     \value FieldParentId      The value stored describes the ID of the item's parent item.
     \value FieldOriginalDate  The value stored describes the original date of this instance or exception
                               according to the recurrent series of the parent item is stored.
+    \value FieldDetached      The value stored describes if the event is detached recurrence or not.
  */
 
 /*!
@@ -396,6 +397,24 @@ QDate QOrganizerItemParent::originalDate() const
 void QOrganizerItemParent::setOriginalDate(const QDate &date)
 {
     setValue(FieldOriginalDate, date);
+}
+
+/*!
+    Returns if the item is a detached recurrence or not
+    A parent is considered detached from the child item if the child item is a
+    persistent exception occurrence of that parent series.
+ */
+bool QOrganizerItemParent::isDetached() const
+{
+    return value(FieldDetached).toBool();
+}
+
+/*!
+    Sets if the item is a detached recurrence or not.
+ */
+void QOrganizerItemParent::setDetached(bool detached)
+{
+    setValue(FieldDetached, detached);
 }
 
 

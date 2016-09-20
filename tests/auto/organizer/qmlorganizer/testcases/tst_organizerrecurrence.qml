@@ -47,6 +47,19 @@ TestCase {
     id: test
     name: "OrganizerRecurrenceTests"
 
+    property var testEvent: null
+    property var testTodo: null
+
+    Component {
+        id: eventComponent
+        Event {}
+    }
+
+    Component {
+        id: todoComponent
+        Todo {}
+    }
+
     QOrganizerTestUtility {
         id: utility
     }
@@ -56,14 +69,6 @@ TestCase {
         autoUpdate:true
         startPeriod:'2009-01-01'
         endPeriod:'2014-12-31'
-    }
-
-    Event {
-        id: testEvent
-    }
-
-    Todo {
-        id: testTodo
     }
 
     RecurrenceRule {
@@ -655,6 +660,7 @@ TestCase {
             model.manager = managers[i];
             spyManagerChanged.wait()
             cleanDatabase();
+            testEvent = eventComponent.createObject(test)
 
             testRule.frequency = RecurrenceRule.Daily;
             testRule.interval = 1;
@@ -681,6 +687,7 @@ TestCase {
             model.manager = managers[i];
             spyManagerChanged.wait()
             cleanDatabase();
+            testEvent = eventComponent.createObject(test)
 
             testRule.frequency = RecurrenceRule.Daily;
             testRule.interval = 3;
@@ -726,7 +733,6 @@ TestCase {
 
     function runTest(data) {
         for (var i in data.managers) {
-            console.log("Testing "+data.managers[i]+" backend")
             model.manager = data.managers[i]
             spyManagerChanged.wait()
             cleanDatabase()
@@ -776,6 +782,16 @@ TestCase {
             spyModelChanged.wait()
         }
         compare(model.itemIds().length, 0)
+
+        if (testEvent) {
+            testEvent.destroy()
+            testEvent = null
+        }
+
+        if (testTodo) {
+            testTodo.destroy()
+            testTodo = null
+        }
     }
 
     function populateTestItemsFromData(data) {
@@ -803,6 +819,8 @@ TestCase {
             testXRule.positions = data.xrule.positions;
             testXRule.firstDayOfWeek = data.xrule.firstDayOfWeek;
         }
+        testEvent = eventComponent.createObject(test)
+        testTodo = todoComponent.createObject(test)
 
         testEvent.startDateTime = new Date(data.definitions.start);
         testTodo.startDateTime = new Date(data.definitions.start);
@@ -818,7 +836,6 @@ TestCase {
         testTodo.recurrence.exceptionDates = data.definitions.exceptionDates;
         testEvent.recurrence.exceptionRules = data.definitions.exceptionRules;
         testTodo.recurrence.exceptionRules = data.definitions.exceptionRules;
-
     }
 
     function compareResultDatesToModel(results, model) {

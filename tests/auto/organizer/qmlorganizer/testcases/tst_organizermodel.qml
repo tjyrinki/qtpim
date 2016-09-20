@@ -365,6 +365,196 @@ TestCase {
         component.destroy()
     }
 
+    function test_removeEvent_data() {
+        var event1 = utility.create_testobject("import QtQuick 2.0\n"
+            + "import QtOrganizer 5.0\n"
+            + "Event {\n"
+            + "  displayLabel: \"starts 2010-12-09 8AM finishes 5PM\"\n"
+            + "  startDateTime: new Date(2010, 12, 9, 8, 0)\n"
+            + "  endDateTime: new Date(2010, 12, 9, 17, 0)\n"
+            + "}\n", modelTests);
+
+        var event2 = utility.create_testobject("import QtQuick 2.0\n"
+            + "import QtOrganizer 5.0\n"
+            + "Event {\n"
+            + "  displayLabel: \"starts 2010-12-10 at 11AM finishing 1PM, repeating for 4 weeks\"\n"
+            + "  startDateTime: new Date(2010, 12, 10, 11, 0)\n"
+            + "  endDateTime: new Date(2010, 12, 10, 13, 0)\n"
+            + "}\n", modelTests);
+
+        var event2Recurrence = utility.create_testobject("import QtQuick 2.0\n"
+            + "import QtOrganizer 5.0\n"
+            + "Recurrence {\n"
+            + "  recurrenceRules: RecurrenceRule {\n"
+            + "    frequency: RecurrenceRule.Weekly\n"
+            + "    daysOfWeek: [Qt.Friday]\n"
+            + "    limit: 3\n"
+            + "  }\n"
+            + "}\n", modelTests);
+        event2.setDetail(event2Recurrence)
+
+        return [ {'events': [event1, event2],
+                  'count': 4 } ]
+    }
+
+    function test_removeEvent(data)
+    {
+        var managers = utility.getManagerListData();
+        for (var i=0; i < managers.length; i++) {
+            var managerName = managers[i].managerToBeTested
+            var organizerModel = utility.create_testobject("import QtQuick 2.0\n"
+                + "import QtOrganizer 5.0\n"
+                + "OrganizerModel {\n"
+                + "  manager: '" + managerName + "'\n"
+                + "  startPeriod: new Date(2010, 1, 1, 0, 0)\n"
+                + "  endPeriod: new Date(2010, 12, 30, 23, 59)\n"
+                + "  sortOrders: [\n"
+                + "    SortOrder {\n"
+                + "      detail: Detail.EventTime\n"
+                + "      field: EventTime.FieldStartDateTime\n"
+                + "      direction: Qt.AscendingOrder\n"
+                + "    }\n"
+                + "  ]\n"
+                + "}\n", modelTests);
+
+            for (var e=0; e < data.events.length; e++)
+                organizerModel.saveItem(data.events[e])
+            tryCompare(organizerModel, "itemCount", data.count)
+
+            // remove the recurrence event (should remove all children events)
+            organizerModel.removeItem(data.events[1].itemId)
+            tryCompare(organizerModel, "itemCount", 1)
+
+            // remove standalone item
+            organizerModel.removeItem(organizerModel.items[0])
+            tryCompare(organizerModel, "itemCount", 0)
+        }
+    }
+
+    function test_modify_recurrenceEvents_data() {
+        return utility.getManagerListData();
+    }
+
+    function test_modify_recurrenceEvents(data) {
+        console.debug("TEST:" + data.managerToBeTested )
+        var event = utility.create_testobject("import QtQuick 2.0\n"
+            + "import QtOrganizer 5.0\n"
+            + "Event {\n"
+            + "  displayLabel: \"starts 2010-12-10 at 11AM finishing 1PM, repeating for 4 weeks\"\n"
+            + "  startDateTime: new Date(2010, 12, 10, 11, 0)\n"
+            + "  endDateTime: new Date(2010, 12, 10, 13, 0)\n"
+            + "}\n", modelTests);
+
+        var eventRecurrence = utility.create_testobject("import QtQuick 2.0\n"
+            + "import QtOrganizer 5.0\n"
+            + "Recurrence {\n"
+            + "  recurrenceRules: RecurrenceRule {\n"
+            + "    frequency: RecurrenceRule.Weekly\n"
+            + "    daysOfWeek: [Qt.Friday]\n"
+            + "    limit: 3\n"
+            + "  }\n"
+            + "}\n", modelTests);
+        event.setDetail(eventRecurrence)
+
+        var organizerModel = utility.create_testobject("import QtQuick 2.0\n"
+            + "import QtOrganizer 5.0\n"
+            + "OrganizerModel {\n"
+            + "  property var testFetchedItems: []\n"
+            + "  manager: '" + data.managerToBeTested + "'\n"
+            + "  startPeriod: new Date(2010, 1, 1, 0, 0)\n"
+            + "  endPeriod: new Date(2010, 12, 30, 23, 59)\n"
+            + "  sortOrders: [\n"
+            + "    SortOrder {\n"
+            + "      detail: Detail.EventTime\n"
+            + "      field: EventTime.FieldStartDateTime\n"
+            + "      direction: Qt.AscendingOrder\n"
+            + "    }\n"
+            + "  ]\n"
+            + "    onItemsFetched: {\n"
+            + "        testFetchedItems = fetchedItems;\n"
+            + "    }\n"
+            + "}\n", modelTests);
+
+        organizerModel.saveItem(event)
+        tryCompare(organizerModel, "itemCount", 3)
+
+        var organizerChangedSpy = utility.create_testobject("import QtTest 1.0; SignalSpy {}", organizerModel);
+        organizerChangedSpy.target = organizerModel;
+        organizerChangedSpy.signalName = "modelChanged";
+
+        // modify a individual recurrence event
+        var itemNewDisplayLabel = "starts 2010-12-10 at 11AM finishing 1PM, repeating for 4 weeks (detached)"
+        var item = organizerModel.items[1]
+        item.displayLabel = itemNewDisplayLabel
+        organizerModel.saveItem(item)
+        organizerChangedSpy.wait();
+
+        // fetch modified item
+        var organizerFetchedSpy = utility.create_testobject("import QtTest 1.0; SignalSpy {}", organizerModel);
+        organizerFetchedSpy.target = organizerModel;
+        organizerFetchedSpy.signalName = "itemsFetched";;
+        organizerModel.fetchItems([item.itemId])
+        organizerFetchedSpy.wait()
+        compare(organizerFetchedSpy.count, 1)
+        compare(organizerModel.testFetchedItems.length, 1)
+        var newItem = organizerModel.testFetchedItems[0]
+        // check if item is marked as detached and contains the new display label
+        compare(newItem.displayLabel, itemNewDisplayLabel)
+        var parentDetail = newItem.detail(Detail.Parent)
+        compare(parentDetail.isDetached, true)
+    }
+
+    function test_remove_a_single_ocurrence_data() {
+        return utility.getManagerListData();
+    }
+
+    function test_remove_a_single_ocurrence(data) {
+        var event = utility.create_testobject("import QtQuick 2.0\n"
+            + "import QtOrganizer 5.0\n"
+            + "Event {\n"
+            + "  displayLabel: \"starts 2010-12-10 at 11AM finishing 1PM, repeating for 4 weeks\"\n"
+            + "  startDateTime: new Date(2010, 12, 10, 11, 0)\n"
+            + "  endDateTime: new Date(2010, 12, 10, 13, 0)\n"
+            + "}\n", modelTests);
+
+        var eventRecurrence = utility.create_testobject("import QtQuick 2.0\n"
+            + "import QtOrganizer 5.0\n"
+            + "Recurrence {\n"
+            + "  recurrenceRules: RecurrenceRule {\n"
+            + "    frequency: RecurrenceRule.Weekly\n"
+            + "    daysOfWeek: [Qt.Friday]\n"
+            + "    limit: 3\n"
+            + "  }\n"
+            + "}\n", modelTests);
+        event.setDetail(eventRecurrence)
+
+        var organizerModel = utility.create_testobject("import QtQuick 2.0\n"
+            + "import QtOrganizer 5.0\n"
+            + "OrganizerModel {\n"
+            + "  manager: '" + data.managerToBeTested + "'\n"
+            + "  startPeriod: new Date(2010, 1, 1, 0, 0)\n"
+            + "  endPeriod: new Date(2010, 12, 30, 23, 59)\n"
+            + "  sortOrders: [\n"
+            + "    SortOrder {\n"
+            + "      detail: Detail.EventTime\n"
+            + "      field: EventTime.FieldStartDateTime\n"
+            + "      direction: Qt.AscendingOrder\n"
+            + "    }\n"
+            + "  ]\n"
+            + "}\n", modelTests);
+
+        organizerModel.saveItem(event)
+        tryCompare(organizerModel, "itemCount", 3)
+
+        var organizerChangedSpy = utility.create_testobject("import QtTest 1.0; SignalSpy {}", organizerModel);
+        organizerChangedSpy.target = organizerModel;
+        organizerChangedSpy.signalName = "modelChanged";
+
+        // remove a single recurrence
+        organizerModel.removeItem(organizerModel.items[1].itemId)
+        tryCompare(organizerModel, "itemCount", 2)
+    }
+
     function test_organizermodel_error_data() {
         return utility.getManagerListData();
     }
@@ -1137,6 +1327,14 @@ TestCase {
             collection1.name = 'collection ' + i
             model.saveCollection(collection1);
             collectionsChangedSpy.wait(signalWaitTime);
+            if (event1)
+                event1.destroy()
+            event1 = utility.create_testobject(
+                            "import QtOrganizer 5.0\n"
+                            + "Event {\n"
+                            + "  startDateTime: new Date(2011, 12, 7, 11)\n"
+                            + "  endDateTime: new Date(2011, 12, 8, 0, 30)\n"
+                            + "}\n", modelTests);
             event1.collectionId = model.collections[i].collectionId;
             model.saveItem(event1);
             modelChangedSpy.wait(signalWaitTime);

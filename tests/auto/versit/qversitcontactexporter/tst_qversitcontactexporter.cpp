@@ -1353,7 +1353,7 @@ void tst_QVersitContactExporter::testEncodeFavorite()
     CHECK_VALUE(favoriteProperty, QVersitProperty::CompoundType,
                 QStringList() << QStringLiteral("true") << QString::number(favoriteIndex));
 }
-
+#if 0
 void tst_QVersitContactExporter::testEncodeExtendedDetail()
 {
     QFETCH(QString, extendedDetailName);
@@ -1380,7 +1380,7 @@ void tst_QVersitContactExporter::testEncodeExtendedDetail()
     CHECK_VALUE(property, QVersitProperty::CompoundType,
                 QStringList() << extendedDetailName << extendedDetailDataInProperty);
 }
-
+#endif
 void tst_QVersitContactExporter::testEncodeExtendedDetail_data()
 {
     QTest::addColumn<QString>("extendedDetailName");

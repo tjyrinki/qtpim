@@ -957,6 +957,7 @@ TestCase {
 
             // removeGeneratedOccurrence
             var occurrenceRemove = model.items[0];
+            console.debug("Remove item>" + occurrenceRemove.itemId)
             model.removeItem(occurrenceRemove);
             modelChangedSpy.wait(spyWaitDelay);
             compareResultDatesToModel(data.modifications.removeGeneratedOccurrence.results, model);

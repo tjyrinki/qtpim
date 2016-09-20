@@ -187,7 +187,7 @@ signals:
     void collectionsChanged();
     void itemsFetched(int requestId, const QVariantList &fetchedItems);
     void exportCompleted(ExportError error, QUrl url);
-    void importCompleted(ImportError error, QUrl url);
+    void importCompleted(ImportError error, QUrl url, const QStringList &ids);
 
 public slots:
     void update();
@@ -220,8 +220,11 @@ private slots:
 
 
 private:
+    int itemIndex(const QOrganizerItem &item) const;
     void removeItemsFromModel(const QList<QString>& ids);
+    bool removeItemFromModel(QDeclarativeOrganizerItem *item);
     bool itemHasRecurrence(const QOrganizerItem& oi) const;
+    bool isGeneratedRecurrence(QOrganizerItem& oi) const;
     QDeclarativeOrganizerItem* createItem(const QOrganizerItem& item);
     void checkError(const QOrganizerAbstractRequest *request);
 

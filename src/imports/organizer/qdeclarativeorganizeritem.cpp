@@ -136,7 +136,10 @@ QQmlListProperty<QDeclarativeOrganizerItemDetail> QDeclarativeOrganizerItem::ite
  */
 QString QDeclarativeOrganizerItem::itemId() const
 {
-    return m_id.toString();
+    if (!m_id.isNull())
+        return m_id.toString();
+    else
+        return QString();
 }
 
 /*!
@@ -414,10 +417,26 @@ QOrganizerItem QDeclarativeOrganizerItem::item() const
 /*!
     \internal
  */
-bool QDeclarativeOrganizerItem::generatedOccurrence() const
+bool QDeclarativeOrganizerItem::isOccurrence() const
 {
     QDeclarativeOrganizerItemType::ItemType type = itemType();
-    return (m_id.isNull() && (type == QDeclarativeOrganizerItemType::EventOccurrence || type == QDeclarativeOrganizerItemType::TodoOccurrence));
+
+    return (type == QDeclarativeOrganizerItemType::EventOccurrence ||
+            type == QDeclarativeOrganizerItemType::TodoOccurrence);
+}
+
+/*!
+    \internal
+ */
+bool QDeclarativeOrganizerItem::isGeneratedOccurrence() const
+{
+    if (isOccurrence()) {
+        foreach (QDeclarativeOrganizerItemDetail *detail, m_details) {
+            if (QDeclarativeOrganizerItemDetail::Parent == detail->type())
+                return !static_cast<QDeclarativeOrganizerItemParent *>(detail)->isDetached();
+        }
+    }
+    return false;
 }
 
 /*!

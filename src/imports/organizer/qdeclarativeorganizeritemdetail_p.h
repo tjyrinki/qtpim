@@ -292,11 +292,13 @@ class QDeclarativeOrganizerItemParent : public QDeclarativeOrganizerItemDetail
 
     Q_PROPERTY(QDateTime originalDate READ originalDate WRITE setOriginalDate NOTIFY valueChanged)
     Q_PROPERTY(QString parentId READ parentId WRITE setParentId NOTIFY valueChanged)
+    Q_PROPERTY(bool isDetached READ isDetached WRITE setDetached NOTIFY valueChanged)
 
 public:
     enum ParentField {
         FieldParentId = QOrganizerItemParent::FieldParentId,
-        FieldOriginalDate = QOrganizerItemParent::FieldOriginalDate
+        FieldOriginalDate = QOrganizerItemParent::FieldOriginalDate,
+        FieldDetached = QOrganizerItemParent::FieldDetached
     };
 
     QDeclarativeOrganizerItemParent(QObject *parent = 0);
@@ -310,6 +312,9 @@ public:
 
     void setParentId(const QString &newParentId);
     QString parentId() const;
+
+    void setDetached(bool newDetached);
+    bool isDetached() const;
 
 Q_SIGNALS:
     void valueChanged();

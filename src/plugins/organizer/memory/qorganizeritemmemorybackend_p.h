@@ -282,6 +282,12 @@ private:
     bool typesAreRelated(QOrganizerItemType::ItemType occurrenceType, QOrganizerItemType::ItemType parentType);
 
     void performAsynchronousOperation(QOrganizerAbstractRequest* request);
+    static bool isOcurrence(const QOrganizerItem &item);
+    static bool isGeneratedOcurrence(const QOrganizerItem &item);
+    static bool removeOcurrenceDate(QOrganizerItem *parent, const QDate &date);
+    static bool idIsOcurrence(const QOrganizerItemId &id);
+    static QString parentId(const QOrganizerItemId &id);
+    static QString ocurrenceId(const QOrganizerItemId &id);
 
     QOrganizerItemMemoryEngineData* d;
 };

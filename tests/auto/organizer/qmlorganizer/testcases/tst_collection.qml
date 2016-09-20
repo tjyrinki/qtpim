@@ -305,6 +305,7 @@ TestCase {
         var savedEvent = organizerModel.items[organizerModel.items.length - 1];
         compare(savedEvent.collectionId, organizerModel.defaultCollection().collectionId);//savedEvent sometimes undefined!?!?!?
         spySettingCollectionId.target = savedEvent;
+        spySettingCollectionId.clear()
 
         // set different collection
         verify(savedCollection.collectionId != organizerModel.defaultCollection().collectionId)

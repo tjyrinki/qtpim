@@ -71,7 +71,7 @@ private slots:
 
     void testEmptyItemShouldNotBeExported();
 
-    void testExtendedDetail();
+//    void testExtendedDetail();
     void testExtendedDetail_data();
     void testMultipleExtendedDetails();
     QOrganizerItemExtendedDetail createExtendedDetail(

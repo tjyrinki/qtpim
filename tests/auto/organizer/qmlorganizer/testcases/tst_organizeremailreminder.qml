@@ -194,7 +194,7 @@ Rectangle {
                 model.destroy();
                 event.destroy();
                 emailReminderDetail.destroy();
-   //           utility.empty_calendar();
+                utility.empty_calendar();
             }
         }
     }

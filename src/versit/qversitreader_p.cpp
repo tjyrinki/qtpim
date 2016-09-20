@@ -44,6 +44,7 @@
 #include <QtCore/qbuffer.h>
 #include <QtCore/qtextcodec.h>
 #include <QtCore/qvariant.h>
+#include <QtCore/QReadWriteLock>
 
 #include "qversitutils_p.h"
 
@@ -412,7 +413,18 @@ QVersitReaderPrivate::~QVersitReaderPrivate()
 
 QHash<QPair<QVersitDocument::VersitType,QString>, QVersitProperty::ValueType>*
 QVersitReaderPrivate::valueTypeMap() {
+    static QReadWriteLock valueTypeMapLock;
+
+    QReadLocker readLock(&valueTypeMapLock);
     if (mValueTypeMap == 0) {
+        readLock.unlock();
+
+        QWriteLocker writeLock(&valueTypeMapLock);
+        // check if map still empty
+        if (mValueTypeMap) {
+            return mValueTypeMap;
+        }
+
         mValueTypeMap = new QHash<QPair<QVersitDocument::VersitType,QString>, QVersitProperty::ValueType>();
         mValueTypeMap->insert(qMakePair(QVersitDocument::VCard21Type, QString::fromLatin1("AGENT")),
                              QVersitProperty::VersitDocumentType);

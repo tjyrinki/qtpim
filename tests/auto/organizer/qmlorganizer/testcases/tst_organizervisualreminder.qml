@@ -174,6 +174,7 @@ Rectangle {
                 visualReminderDetail.repetitionCount = 0;
 
                 savedVisualEvent.setDetail(savedEventDetail);
+                console.debug("SAVE")
 
                 model.saveItem(savedVisualEvent);
                 utility.organizerChangedSpy.wait();
@@ -208,7 +209,7 @@ Rectangle {
                 model.destroy();
                 visualReminderEvent.destroy();
                 visualReminderDetail.destroy();
-    //            utility.empty_calendar();
+                utility.empty_calendar();
             }
         }
     }

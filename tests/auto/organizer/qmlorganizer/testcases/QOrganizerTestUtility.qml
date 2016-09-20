@@ -200,6 +200,7 @@ TestCase {
         var removeIds = [];
         var i;
         var j;
+
         for (i = 0; i < __model.itemCount; i++) {
             if (__model.items[i].itemType == Type.EventOccurrence || __model.items[i].itemType == Type.TodoOccurrence)
                 ids.push(__model.items[i].parentId)

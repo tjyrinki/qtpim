@@ -728,6 +728,8 @@ bool QOrganizerItemMemoryEngine::saveItem(QOrganizerItem* theOrganizerItem, QOrg
             // it already exists, so save it where it already exists.
             targetCollectionId = d->m_itemsInCollectionsHash.key(theOrganizerItemId);
         } else if (!d->m_itemsInCollectionsHash.values(targetCollectionId).contains(theOrganizerItemId)) {
+            qDebug() << "Invalid collection";
+
             // the given collection id was non-null but doesn't already contain this item.  error.
             *error = QOrganizerManager::InvalidCollectionError;
             return false;
@@ -772,8 +774,10 @@ bool QOrganizerItemMemoryEngine::saveItem(QOrganizerItem* theOrganizerItem, QOrg
             }
         }
     } else {
-        // id does not exist; if not zero, fail.
-        if (!theOrganizerItemId.isNull()) {
+        bool isOcurrence = (theOrganizerItem->type() == QOrganizerItemType::TypeEventOccurrence) ||
+                           (theOrganizerItem->type() == QOrganizerItemType::TypeTodoOccurrence);
+        // if is not a recurrence and id does not exist, fail.
+        if (!theOrganizerItemId.isNull() && !isOcurrence) {
             // the ID is not empty, and it doesn't identify an existing organizer item in our database either.
             *error = QOrganizerManager::DoesNotExistError;
             return false;
@@ -793,8 +797,7 @@ bool QOrganizerItemMemoryEngine::saveItem(QOrganizerItem* theOrganizerItem, QOrg
 
         // if we're saving an exception occurrence, we need to add it's original date as an exdate to the parent.
         QOrganizerItemId parentId;
-        if (theOrganizerItem->type() == QOrganizerItemType::TypeEventOccurrence
-            || theOrganizerItem->type() == QOrganizerItemType::TypeTodoOccurrence) {
+        if (isOcurrence) {
             // update the event or the todo by adding an EX-DATE which corresponds to the original date of the occurrence being saved.
             QOrganizerItemParent origin = theOrganizerItem->detail(QOrganizerItemDetail::TypeParent);
             parentId = origin.parentId();
@@ -831,6 +834,10 @@ bool QOrganizerItemMemoryEngine::saveItem(QOrganizerItem* theOrganizerItem, QOrg
                 d->m_idToItemHash.insert(parentId, parentItem); // replacement insert
                 changeSet.insertChangedItem(parentId); // is this correct?  it's an exception, so change parent?
             }
+
+            // mark event as detached event
+            origin.setDetached(true);
+            theOrganizerItem->saveDetail(&origin);
         }
 
         // if target collection id is null, set to default id.
@@ -838,11 +845,15 @@ bool QOrganizerItemMemoryEngine::saveItem(QOrganizerItem* theOrganizerItem, QOrg
             targetCollectionId = d->defaultCollectionId();
 
         // update the organizer item - set its ID
-        const QOrganizerCollectionMemoryEngineId *colEngineId = static_cast<const QOrganizerCollectionMemoryEngineId *>(QOrganizerManagerEngine::engineCollectionId(targetCollectionId));
-        QOrganizerItemMemoryEngineId* newId = new QOrganizerItemMemoryEngineId(colEngineId->m_collectionId, d->m_nextOrganizerItemId++, d->m_managerUri);
-        // note: do NOT delete the QOrganizerItemMemoryEngineId -- the QOrganizerItemId ctor takes ownership of it.
-        theOrganizerItemId = QOrganizerItemId(newId);
-        theOrganizerItem->setId(theOrganizerItemId);
+        bool isNewItem = theOrganizerItem->id().isNull();
+        if (isNewItem) {
+            const QOrganizerCollectionMemoryEngineId *colEngineId = static_cast<const QOrganizerCollectionMemoryEngineId *>(QOrganizerManagerEngine::engineCollectionId(targetCollectionId));
+            QOrganizerItemMemoryEngineId* newId = new QOrganizerItemMemoryEngineId(colEngineId->m_collectionId, d->m_nextOrganizerItemId++, d->m_managerUri);
+            // note: do NOT delete the QOrganizerItemMemoryEngineId -- the QOrganizerItemId ctor takes ownership of it.
+            theOrganizerItemId = QOrganizerItemId(newId);
+            theOrganizerItem->setId(theOrganizerItemId);
+        }
+
         // finally, add the organizer item to our internal lists and return
         theOrganizerItem->setCollectionId(targetCollectionId);
         d->m_idToItemHash.insert(theOrganizerItemId, *theOrganizerItem);  // add organizer item to hash
@@ -851,7 +862,11 @@ bool QOrganizerItemMemoryEngine::saveItem(QOrganizerItem* theOrganizerItem, QOrg
             d->m_parentIdToChildIdHash.insert(parentId, theOrganizerItemId);
         }
         d->m_itemsInCollectionsHash.insert(targetCollectionId, theOrganizerItemId);
-        changeSet.insertAddedItem(theOrganizerItemId);
+        if (isNewItem)
+            changeSet.insertAddedItem(theOrganizerItemId);
+        else
+            changeSet.insertChangedItem(theOrganizerItemId);
+
     }
 
     *error = QOrganizerManager::NoError;     // successful.
@@ -1102,8 +1117,25 @@ bool QOrganizerItemMemoryEngine::removeItem(const QOrganizerItemId& organizerite
 {
     QHash<QOrganizerItemId, QOrganizerItem>::const_iterator hashIterator = d->m_idToItemHash.find(organizeritemId);
     if (hashIterator == d->m_idToItemHash.constEnd()) {
-        *error = QOrganizerManager::DoesNotExistError;
-        return false;
+        if (!idIsOcurrence(organizeritemId)) {
+            *error = QOrganizerManager::DoesNotExistError;
+            return false;
+        } else {
+            // it is generated ocurrence remove it from parent
+            QOrganizerItemId parentId = QOrganizerItemId::fromString(QString("%1:%2").arg(organizeritemId.managerUri()).arg(this->parentId(organizeritemId)));
+            hashIterator = d->m_idToItemHash.find(parentId);
+            if (hashIterator != d->m_idToItemHash.constEnd()) {
+                QDate ocurrenceDate = QDate::fromString(ocurrenceId(organizeritemId));
+                QOrganizerItem parent = hashIterator.value();
+                if (ocurrenceDate.isValid() && removeOcurrenceDate(&parent, ocurrenceDate)) {
+                    d->m_idToItemHash.insert(parent.id(), parent);
+                    changeSet.insertChangedItem(parent.id());
+                    changeSet.insertRemovedItem(organizeritemId);
+                }
+            } else {
+                return false;
+            }
+        }
     }
 
     // if it is a child item, remove itself from the children hash
@@ -1150,13 +1182,10 @@ bool QOrganizerItemMemoryEngine::removeOccurrence(const QOrganizerItem &organize
         return false;
     } else {
         QOrganizerItem parentItem = hashIterator.value();
-        QOrganizerItemRecurrence recurrenceDetail = parentItem.detail(QOrganizerItemDetail::TypeRecurrence);
-        QSet<QDate> exceptionDates = recurrenceDetail.exceptionDates();
-        exceptionDates.insert(parentDetail.originalDate());
-        recurrenceDetail.setExceptionDates(exceptionDates);
-        parentItem.saveDetail(&recurrenceDetail);
-        d->m_idToItemHash.insert(parentDetail.parentId(), parentItem);
-        changeSet.insertChangedItem(parentDetail.parentId());
+        if (removeOcurrenceDate(&parentItem, parentDetail.originalDate())) {
+            d->m_idToItemHash.insert(parentDetail.parentId(), parentItem);
+            changeSet.insertChangedItem(parentDetail.parentId());
+        }
     }
     *error = QOrganizerManager::NoError;
     return true;
@@ -1206,17 +1235,23 @@ bool QOrganizerItemMemoryEngine::removeItems(const QList<QOrganizerItem> *items,
     QOrganizerItem current;
     QSet<QOrganizerItemId> removedParentIds;
     QOrganizerManager::Error operationError = QOrganizerManager::NoError;
+    bool toBeRemoved;
     for (int i = 0; i < items->count(); i++) {
         current = items->at(i);
+        toBeRemoved = false;
         QOrganizerManager::Error tempError = QOrganizerManager::NoError;
-        if ((current.type() == QOrganizerItemType::TypeEventOccurrence
-             || current.type() == QOrganizerItemType::TypeTodoOccurrence)
-                && current.id().isNull()) {
-            // this is a generated occurrence, modify parent items exception dates
+        if (isOcurrence(current)) {
             QOrganizerItemParent parentDetail = current.detail(QOrganizerItemDetail::TypeParent);
-            if (removedParentIds.isEmpty() || !removedParentIds.contains(parentDetail.parentId()))
+            // check if this is a generated occurrence, and modify parent items exception dates if necessary
+            if (parentDetail.isDetached())
+                toBeRemoved = true;
+            else if (removedParentIds.isEmpty() || !removedParentIds.contains(parentDetail.parentId()))
                 removeOccurrence(current, changeSet, &tempError);
         } else {
+            toBeRemoved = true;
+        }
+
+        if (toBeRemoved) {
             removeItem(current.id(), changeSet, &tempError);
             if (tempError == QOrganizerManager::NoError && itemHasReccurence(current))
                 removedParentIds.insert(current.id());
@@ -1676,6 +1711,57 @@ void QOrganizerItemMemoryEngine::performAsynchronousOperation(QOrganizerAbstract
 
     // now emit any signals we have to emit
     d->emitSharedSignals(&changeSet);
+}
+
+bool QOrganizerItemMemoryEngine::isOcurrence(const QOrganizerItem& item)
+{
+    return (item.type() == QOrganizerItemType::TypeEventOccurrence ||
+            item.type() == QOrganizerItemType::TypeTodoOccurrence);
+}
+
+bool QOrganizerItemMemoryEngine::isGeneratedOcurrence(const QOrganizerItem &item)
+{
+    if (isOcurrence(item)) {
+        QOrganizerItemParent parentDetail = item.detail(QOrganizerItemDetail::TypeParent);
+        return parentDetail.isDetached();
+    }
+    return false;
+}
+
+bool QOrganizerItemMemoryEngine::removeOcurrenceDate(QOrganizerItem *parent, const QDate &date)
+{
+    QOrganizerItemRecurrence recurrenceDetail = parent->detail(QOrganizerItemDetail::TypeRecurrence);
+    QSet<QDate> exceptionDates = recurrenceDetail.exceptionDates();
+
+    if (!exceptionDates.contains(date)) {
+        exceptionDates.insert(date);
+        recurrenceDetail.setExceptionDates(exceptionDates);
+        parent->saveDetail(&recurrenceDetail);
+        return true;
+    }
+
+    return false;
+}
+
+// Id helper functions
+// item Id format: <manager-uri>:<parent-id>#<ocurrence-id>
+bool QOrganizerItemMemoryEngine::idIsOcurrence(const QOrganizerItemId& id)
+{
+    return (id.toString().contains("#"));
+}
+
+QString QOrganizerItemMemoryEngine::ocurrenceId(const QOrganizerItemId& id)
+{
+    if (idIsOcurrence(id)) {
+        return id.toString().split("#").last();
+    }
+    return QString();
+}
+
+QString QOrganizerItemMemoryEngine::parentId(const QOrganizerItemId& id)
+{
+    QString parentId = id.toString().split("#").first();
+    return parentId.split(":").last();
 }
 
 #include "moc_qorganizeritemmemorybackend_p.cpp"

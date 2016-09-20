@@ -46,6 +46,10 @@
 #include <QtCore/qmap.h>
 #include <QtCore/qpointer.h>
 #include <QtCore/qurl.h>
+#include <QtCore/qmimedatabase.h>
+#include <QtCore/qmimetype.h>
+#include <QtCore/qtemporaryfile.h>
+#include <QtCore/qdir.h>
 
 #include <QtGui/qcolor.h>
 #include <QtGui/qpixmap.h>
@@ -96,6 +100,76 @@ QT_BEGIN_NAMESPACE
     \sa RelationshipModel, Contact, {QContactManager}
 */
 
+// Helper class to store contact binary data into a temporary file
+//
+// QContactVcard only supports URL values for images. During a vcard import if the contact cotains
+// an avatar, ringtone or any property formated in a binary data, QVersit will use the
+// ContactExporterResourceHandler to store the binary data.
+// The default implementation of QVersitResourceHandler does not store any data and that
+// causes avatar data loss during the import process.
+// This class will store the data into a temporary file and removes the file when the model gets destroyed.
+class ContactExporterResourceHandler : public QVersitResourceHandler
+{
+public:
+    ContactExporterResourceHandler()
+    {
+    }
+
+    ~ContactExporterResourceHandler()
+    {
+        foreach (const QString& fileName, m_files)
+            QFile::remove(fileName);
+
+        m_files.clear();
+    }
+
+    bool saveResource(const QByteArray& contents,
+                      const QVersitProperty& property,
+                      QString* location)
+    {
+        const QMimeType mt = QMimeDatabase().mimeTypeForData(contents);
+        QString extension(QStringLiteral("data"));
+        if (mt.isValid())
+            extension = mt.suffixes()[0];
+
+        // use property.name() to create a new file for each binary property (avatar, ringtone, etc...)
+        QTemporaryFile tmpFile(QString::fromLatin1("%1/%2_XXXXXX.%3")
+                               .arg(QDir::tempPath())
+                               .arg(property.name().toLower())
+                               .arg(extension));
+        tmpFile.setAutoRemove(false);
+        if (tmpFile.open()) {
+            // the location expect a string in url format ex: file:///tmp/filename.png
+            *location = QUrl::fromLocalFile(tmpFile.fileName()).toString();
+            m_files << *location;
+            tmpFile.write(contents);
+            tmpFile.close();
+            return true;
+        }
+        return false;
+    }
+
+    bool loadResource(const QString &location, QByteArray *contents, QString *mimeType)
+    {
+        if (location.isEmpty())
+            return false;
+
+        QFile file(location);
+        if (!file.open(QIODevice::ReadOnly))
+            return false;
+
+        *contents = file.readAll();
+        const QMimeType mt = QMimeDatabase().mimeTypeForData(*contents);
+        if (mt.isValid())
+            *mimeType = mt.suffixes()[0];
+
+        return !contents->isEmpty();
+    }
+
+    QStringList m_files;
+};
+
+
 class QDeclarativeContactModelPrivate
 {
 public:
@@ -128,6 +202,7 @@ public:
     QVersitReader m_reader;
     QVersitWriter m_writer;
     QStringList m_importProfiles;
+    ContactExporterResourceHandler m_resourceHandler;
 
     QContactManager::Error m_error;
 
@@ -151,7 +226,7 @@ QDeclarativeContactModel::QDeclarativeContactModel(QObject *parent) :
     roleNames.insert(ContactRole, "contact");
     setRoleNames(roleNames);
 
-    connect(this, SIGNAL(managerChanged()), SLOT(doUpdate()));
+    connect(this, SIGNAL(managerChanged()), SLOT(doCleanUpdate()));
     connect(this, SIGNAL(storageLocationsChanged()), SLOT(doUpdate()));
     connect(this, SIGNAL(filterChanged()), SLOT(doUpdate()));
     connect(this, SIGNAL(fetchHintChanged()), SLOT(doUpdate()));
@@ -186,7 +261,7 @@ void QDeclarativeContactModel::setManager(const QString& managerName)
         delete d->m_manager;
     d->m_manager = new QContactManager(managerName);
 
-    connect(d->m_manager, SIGNAL(dataChanged()), this, SLOT(update()));
+    connect(d->m_manager, SIGNAL(dataChanged()), this, SLOT(doCleanUpdate()));
     connect(d->m_manager, SIGNAL(contactsAdded(QList<QContactId>)), this, SLOT(onContactsAdded(QList<QContactId>)));
     connect(d->m_manager, SIGNAL(contactsRemoved(QList<QContactId>)), this, SLOT(onContactsRemoved(QList<QContactId>)));
     connect(d->m_manager, SIGNAL(contactsChanged(QList<QContactId>)), this, SLOT(onContactsChanged(QList<QContactId>)));
@@ -299,13 +374,21 @@ void QDeclarativeContactModel::update()
 {
     if (!d->m_componentCompleted)
         return;
-    QMetaObject::invokeMethod(this, "fetchAgain", Qt::QueuedConnection);
+    QMetaObject::invokeMethod(this, "fetchAgain", Qt::QueuedConnection, Q_ARG(bool, false));
 }
 
 void QDeclarativeContactModel::doUpdate()
 {
     if (d->m_autoUpdate)
         update();
+}
+
+void QDeclarativeContactModel::doCleanUpdate()
+{
+    if (!d->m_componentCompleted)
+        return;
+
+    QMetaObject::invokeMethod(this, "fetchAgain", Qt::QueuedConnection, Q_ARG(bool, true));
 }
 
 /*!
@@ -378,6 +461,35 @@ static QString urlToLocalFileName(const QUrl& url)
 }
 
 /*!
+  \qmlproperty enumeration ContactModel::ImportError
+
+  Defines the errors cases for \l ContactModel::importContacts() -function.
+
+  \list
+  \li ContactModel::ImportNoError             Completed successfully, no error.
+  \li ContactModel::ImportUnspecifiedError    Unspecified error.
+  \li ContactModel::ImportIOError             Input/output error.
+  \li ContactModel::ImportOutOfMemoryError    Out of memory error.
+  \li ContactModel::ImportNotReadyError       Not ready for importing. Only one import operation can be active at a time.
+  \li ContactModel::ImportParseError          Error during parsing.
+  \endlist
+*/
+
+/*!
+  \qmlsignal ContactModel::onImportCompleted(ImportError error, URL url, list<string> ids)
+
+  This signal is emitted, when \l ContactModel::importContacts() completes. The success of operation
+  can be seen on \a error which is defined in \l ContactModel::ImportError. \a url indicates the
+  file, which was imported. \a ids contains the imported contacts ids.
+
+  If the operation was successful, contacts are now imported to backend. If \l ContactModel::autoUpdate
+  is enabled, \l ContactModel::modelChanged will be emitted when imported contacts are also visible on
+  \l ContactModel's data model.
+
+  \sa ContactModel::importContacts
+ */
+
+/*!
   \qmlmethod void ContactModel::importContacts(url url, list<string> profiles)
 
   Import contacts from a vcard by the given \a url and optional \a profiles.
@@ -416,7 +528,7 @@ void QDeclarativeContactModel::importContacts(const QUrl& url, const QStringList
             importError = ImportIOError;
         }
     }
-    emit importCompleted(importError, url);
+    emit importCompleted(importError, url, QStringList());
 }
 
 /*!
@@ -447,6 +559,7 @@ void QDeclarativeContactModel::exportContacts(const QUrl& url, const QStringList
         QString profile = profiles.isEmpty()? QString() : profiles.at(0);
         //only one profile string supported now.
         QVersitContactExporter exporter(profile);
+        exporter.setResourceHandler(&d->m_resourceHandler);
 
         QList<QContact> contacts;
         if (declarativeContacts.isEmpty()) {
@@ -617,11 +730,14 @@ void QDeclarativeContactModel::startImport(QVersitReader::State state)
 {
     if (state == QVersitReader::FinishedState || state == QVersitReader::CanceledState) {
         QVersitContactImporter importer(d->m_importProfiles);
+        importer.setResourceHandler(&d->m_resourceHandler);
         importer.importDocuments(d->m_reader.results());
         QList<QContact> contacts = importer.contacts();
 
         delete d->m_reader.device();
         d->m_reader.setDevice(0);
+
+        QStringList ids;
 
         if (d->m_manager) {
             if (!d->m_manager->saveContacts(&contacts)) {
@@ -629,9 +745,14 @@ void QDeclarativeContactModel::startImport(QVersitReader::State state)
                     d->m_error = d->m_manager->error();
                     emit errorChanged();
                 }
+            } else {
+                foreach (const QContact &c, contacts) {
+                    ids << c.id().toString();
+                }
             }
         }
-        emit importCompleted(QDeclarativeContactModel::ImportError(d->m_reader.error()), d->m_lastImportUrl);
+
+        emit importCompleted(QDeclarativeContactModel::ImportError(d->m_reader.error()), d->m_lastImportUrl, ids);
     }
 }
 
@@ -732,7 +853,7 @@ void QDeclarativeContactModel::clearContacts()
     d->m_contactFetchedMap.clear();
 }
 
-void QDeclarativeContactModel::fetchAgain()
+void QDeclarativeContactModel::fetchAgain(bool clearModel)
 {
     QList<QContactSortOrder> sortOrders;
     foreach (QDeclarativeContactSortOrder* so, d->m_sortOrders) {
@@ -766,6 +887,12 @@ void QDeclarativeContactModel::fetchAgain()
     d->m_pendingContacts.clear();
     d->m_pendingRequests.clear();
     d->m_pendingRequests.append(fetchRequest);
+
+    if (clearModel) {
+        beginResetModel();
+        clearContacts();
+        endResetModel();
+    }
 
     // if we have no contacts yet, we can display results as soon as they arrive
     // but if we are updating the model after a sort or filter change, we have to
@@ -853,8 +980,9 @@ void QDeclarativeContactModel::fetchRequestStateChanged(QContactAbstractRequest:
 
                     int pos = d->m_contacts.indexOf(contact);
                     if (pos != i) {
-                        beginMoveRows(QModelIndex(), pos, pos, QModelIndex(), i);
-                        d->m_contacts.move(pos, i);
+                        int targetPos = i < d->m_contacts.size() ? i : d->m_contacts.size() - 1;
+                        beginMoveRows(QModelIndex(), pos, pos, QModelIndex(), targetPos);
+                        d->m_contacts.move(pos, targetPos);
                         endMoveRows();
                     }
                 }

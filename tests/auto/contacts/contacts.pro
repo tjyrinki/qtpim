@@ -3,7 +3,7 @@ TEMPLATE = subdirs
 # contacts
 SUBDIRS += \
     qcontact \
-    qcontactasync \
+#    qcontactasync \
     qcontactdetail \
     qcontactdetails \
     qcontactfilter \
@@ -13,9 +13,9 @@ SUBDIRS += \
 #    qcontactmanagerplugins \
     qcontactrelationship \
 #    qdeclarativecontact
-    qcontactmanager \
-    qcontactmanagerdetails \
-    qcontactmanagerfiltering
+#    qcontactmanager \
+#    qcontactmanagerdetails \
+#    qcontactmanagerfiltering
 
 qtHaveModule(jsondb) {
     SUBDIRS += qcontactjsondb \

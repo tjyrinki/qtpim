@@ -112,6 +112,7 @@ Rectangle {
                 verify(item2.displayLabel === "EditedEvent1");
 
                 //------delete event------//
+                utility.clearModelChanged()
                 model.removeItem(ids[0]);
                 utility.waitModelChange(0);
                 verify(model.itemCount === 0);
@@ -124,8 +125,6 @@ Rectangle {
                 //remove a list of event
                 model.saveItem(newEvent2);
                 utility.waitModelChange(1);
-                model.saveItem(newEvent1);
-                utility.waitModelChange(2);
                 var deletList = model.itemIds();
                 model.removeItems(deletList);
                 utility.waitModelChange(0);

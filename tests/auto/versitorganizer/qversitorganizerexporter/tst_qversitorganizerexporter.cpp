@@ -1426,7 +1426,7 @@ void tst_QVersitOrganizerExporter::testExportTodoDetails_data()
             << (QList<QVersitProperty>() << property);
     }
 }
-
+#if 0
 void tst_QVersitOrganizerExporter::testExtendedDetail()
 {
     QFETCH(QString, extendedDetailName);
@@ -1458,7 +1458,7 @@ void tst_QVersitOrganizerExporter::testExtendedDetail()
         }
     }
 }
-
+#endif
 void tst_QVersitOrganizerExporter::testExtendedDetail_data()
 {
     QTest::addColumn<QString>("extendedDetailName");

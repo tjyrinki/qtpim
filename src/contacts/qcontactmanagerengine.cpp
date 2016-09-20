@@ -1636,7 +1636,9 @@ void QContactManagerEngine::updateRequestState(QContactAbstractRequest* req, QCo
 #endif
     if (emitState)
         QMetaObject::invokeMethod(req, "stateChanged", connectionType, Q_ARG(QContactAbstractRequest::State, state));
+#if !defined(QT_NO_DEBUG) || defined(QT_FORCE_ASSERTS)
     Q_ASSERT(guard);
+#endif
 }
 
 
@@ -1667,10 +1669,14 @@ void QContactManagerEngine::updateContactIdFetchRequest(QContactIdFetchRequest* 
         connectionType = Qt::BlockingQueuedConnection;
 #endif
     QMetaObject::invokeMethod(req, "resultsAvailable", connectionType);
+#if !defined(QT_NO_DEBUG) || defined(QT_FORCE_ASSERTS)
     Q_ASSERT(guard);
+#endif
     if (emitState)
         QMetaObject::invokeMethod(req, "stateChanged", connectionType, Q_ARG(QContactAbstractRequest::State, newState));
+#if !defined(QT_NO_DEBUG) || defined(QT_FORCE_ASSERTS)
     Q_ASSERT(guard);
+#endif
 }
 
 /*!
@@ -1700,10 +1706,14 @@ void QContactManagerEngine::updateContactFetchRequest(QContactFetchRequest* req,
         connectionType = Qt::BlockingQueuedConnection;
 #endif
     QMetaObject::invokeMethod(req, "resultsAvailable", connectionType);
+#if !defined(QT_NO_DEBUG) || defined(QT_FORCE_ASSERTS)
     Q_ASSERT(guard);
+#endif
     if (emitState)
         QMetaObject::invokeMethod(req, "stateChanged", connectionType, Q_ARG(QContactAbstractRequest::State, newState));
+#if !defined(QT_NO_DEBUG) || defined(QT_FORCE_ASSERTS)
     Q_ASSERT(guard);
+#endif
 }
 
 /*!
@@ -1733,10 +1743,14 @@ void QContactManagerEngine::updateContactRemoveRequest(QContactRemoveRequest* re
         connectionType = Qt::BlockingQueuedConnection;
 #endif
     QMetaObject::invokeMethod(req, "resultsAvailable", connectionType);
+#if !defined(QT_NO_DEBUG) || defined(QT_FORCE_ASSERTS)
     Q_ASSERT(guard);
+#endif
     if (emitState)
         QMetaObject::invokeMethod(req, "stateChanged", connectionType, Q_ARG(QContactAbstractRequest::State, newState));
+#if !defined(QT_NO_DEBUG) || defined(QT_FORCE_ASSERTS)
     Q_ASSERT(guard);
+#endif
 }
 
 /*!
@@ -1767,10 +1781,14 @@ void QContactManagerEngine::updateContactSaveRequest(QContactSaveRequest* req, c
         connectionType = Qt::BlockingQueuedConnection;
 #endif
     QMetaObject::invokeMethod(req, "resultsAvailable", connectionType);
+#if !defined(QT_NO_DEBUG) || defined(QT_FORCE_ASSERTS)
     Q_ASSERT(guard);
+#endif
     if (emitState)
         QMetaObject::invokeMethod(req, "stateChanged", connectionType, Q_ARG(QContactAbstractRequest::State, newState));
+#if !defined(QT_NO_DEBUG) || defined(QT_FORCE_ASSERTS)
     Q_ASSERT(guard);
+#endif
 }
 
 /*!
@@ -1801,10 +1819,14 @@ void QContactManagerEngine::updateRelationshipSaveRequest(QContactRelationshipSa
         connectionType = Qt::BlockingQueuedConnection;
 #endif
     QMetaObject::invokeMethod(req, "resultsAvailable", connectionType);
+#if !defined(QT_NO_DEBUG) || defined(QT_FORCE_ASSERTS)
     Q_ASSERT(guard);
+#endif
     if (emitState)
         QMetaObject::invokeMethod(req, "stateChanged", connectionType, Q_ARG(QContactAbstractRequest::State, newState));
+#if !defined(QT_NO_DEBUG) || defined(QT_FORCE_ASSERTS)
     Q_ASSERT(guard);
+#endif
 }
 
 /*!
@@ -1834,10 +1856,14 @@ void QContactManagerEngine::updateRelationshipRemoveRequest(QContactRelationship
         connectionType = Qt::BlockingQueuedConnection;
 #endif
     QMetaObject::invokeMethod(req, "resultsAvailable", connectionType);
+#if !defined(QT_NO_DEBUG) || defined(QT_FORCE_ASSERTS)
     Q_ASSERT(guard);
+#endif
     if (emitState)
         QMetaObject::invokeMethod(req, "stateChanged", connectionType, Q_ARG(QContactAbstractRequest::State, newState));
+#if !defined(QT_NO_DEBUG) || defined(QT_FORCE_ASSERTS)
     Q_ASSERT(guard);
+#endif
 }
 
 /*!
@@ -1867,10 +1893,14 @@ void QContactManagerEngine::updateRelationshipFetchRequest(QContactRelationshipF
         connectionType = Qt::BlockingQueuedConnection;
 #endif
     QMetaObject::invokeMethod(req, "resultsAvailable", connectionType);
+#if !defined(QT_NO_DEBUG) || defined(QT_FORCE_ASSERTS)
     Q_ASSERT(guard);
+#endif
     if (emitState)
         QMetaObject::invokeMethod(req, "stateChanged", connectionType, Q_ARG(QContactAbstractRequest::State, newState));
+#if !defined(QT_NO_DEBUG) || defined(QT_FORCE_ASSERTS)
     Q_ASSERT(guard);
+#endif
 }
 
 /*!
@@ -2090,10 +2120,14 @@ void QContactManagerEngine::updateContactFetchByIdRequest(QContactFetchByIdReque
         connectionType = Qt::BlockingQueuedConnection;
 #endif
     QMetaObject::invokeMethod(req, "resultsAvailable", connectionType);
+#if !defined(QT_NO_DEBUG) || defined(QT_FORCE_ASSERTS)
     Q_ASSERT(guard);
+#endif
     if (emitState)
         QMetaObject::invokeMethod(req, "stateChanged", connectionType, Q_ARG(QContactAbstractRequest::State, newState));
+#if !defined(QT_NO_DEBUG) || defined(QT_FORCE_ASSERTS)
     Q_ASSERT(guard);
+#endif
 }
 
 #include "moc_qcontactmanagerengine.cpp"

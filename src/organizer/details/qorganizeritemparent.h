@@ -62,7 +62,8 @@ public:
 
     enum ParentField {
         FieldParentId = TypeParent + 1,
-        FieldOriginalDate
+        FieldOriginalDate,
+        FieldDetached,
     };
 
     void setParentId(const QOrganizerItemId &parentId);
@@ -70,6 +71,9 @@ public:
 
     void setOriginalDate(const QDate &date);
     QDate originalDate() const;
+
+    void setDetached(bool detached);
+    bool isDetached() const;
 };
 
 QT_END_NAMESPACE_ORGANIZER

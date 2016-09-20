@@ -121,7 +121,7 @@ private slots:
     void detailOrders();
     void itemType();
     void collections();
-    void dataSerialization();
+//    void dataSerialization();
     void itemFetch();
     void todoItemFetch();
     void itemFetchV2();
@@ -2991,7 +2991,7 @@ void tst_QOrganizerManager::testFilterFunction()
     QVERIFY(!QOrganizerManagerEngine::testFilter(oicf, item));
 }
 
-
+#if 0
 void tst_QOrganizerManager::dataSerialization()
 {
     QFETCH(QString, uri);
@@ -3016,7 +3016,7 @@ void tst_QOrganizerManager::dataSerialization()
         QVERIFY(id == event.id());
     }
 }
-
+#endif
 void tst_QOrganizerManager::itemFilterFetch()
 {
     // Some of the tests present on itemFetch()-tests, but this test extends the cases a bit

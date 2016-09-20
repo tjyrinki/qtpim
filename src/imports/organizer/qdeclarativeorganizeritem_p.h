@@ -116,10 +116,12 @@ public:
     void setItem(const QOrganizerItem &item);
     QOrganizerItem item() const;
 
-    bool generatedOccurrence() const;
+    bool isOccurrence() const;
+    bool isGeneratedOccurrence() const;
 
     QDateTime itemStartTime() const;
     QDateTime itemEndTime() const;
+
 
 Q_SIGNALS:
     void itemChanged();
